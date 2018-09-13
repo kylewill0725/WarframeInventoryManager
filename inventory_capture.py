@@ -15,5 +15,9 @@ def capture():
             time.sleep(50 / 1000)
     return images
 
-    img = Image.open("test0.png")
-    parseItemPage(img)
+
+def save_items(images):
+    i = 0
+    for img in images:
+        img.save(f'test{i}.png')
+        i += 1
