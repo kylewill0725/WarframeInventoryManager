@@ -1,5 +1,7 @@
 ### User Ignores
 .idea/
+.floo*
+test*
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template

@@ -7,6 +7,8 @@ name = "pypi"
 pillow = "*"
 "pywin32" = "*"
 pytesseract = "*"
+opencv-python = "*"
+matplotlib = "*"
 
 [dev-packages]
 

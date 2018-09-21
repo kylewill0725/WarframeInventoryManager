@@ -1,8 +1,11 @@
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Callable, Tuple
 
+import cv2
 import pytesseract
+import numpy as np
 from PIL import Image, ImageFile
 
 
@@ -17,12 +20,18 @@ class TessData:
     word_num: int = 0
     left: int = 0
     top: int = 0
+    right: int = field(init=False)
+    bottom: int = field(init=False)
     width: int = 0
     height: int = 0
     confidence: int = -1
 
+    def __post_init__(self):
+        self.right = self.left + self.width
+        self.bottom = self.top + self.height
+
     def tostring(self):
-        return f'{self.result}	{self.left}	{self.top}	{self.width+self.left}	{self.height+self.height}	' \
+        return f'{self.result}	{self.left}	{self.top}	{self.right}	{self.bottom}	' \
                + f'{self.confidence}'
 
 
@@ -40,8 +49,8 @@ class TessDataParser:
             if columns[0].isdigit():
                 tess = TessData(columns[-1], *[int(x) for x in columns[:-1]])
                 if tess.confidence >= 0:
-                    if tess.confidence > 75:
-                        match = re.match("[a-zA-Z0-9 &]+", tess.result)
+                    if tess.confidence >= 75:
+                        match = re.match("[a-zA-Z0-9 &]+", tess.result.value)
                         if match is not None:
                             data.append(tess)
                         else:
@@ -53,12 +62,9 @@ class TessDataParser:
         return data, failed_data
 
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe'
-
-
 @dataclass
 class InventoryImageInfo:
-    image: ImageFile.Image
+    image: np.ndarray
     top_left_corner_x: int
     top_left_corner_y: int
     name_field_width: int
@@ -69,90 +75,91 @@ class InventoryImageInfo:
     row_count: int
 
 
-@dataclass
-class ScaledImage:
-    """Tracks changes of scale for an image. Needed due to frequent rescaling when using tesseract"""
-
-    image: ImageFile.Image
-    scale_x: float = 1
-    scale_y: float = 1
-    corner_x: int = 0
-    corner_y: int = 0
-
-    def rescale(self, multiplier: float):
-        return self.rescale_xy(multiplier, multiplier)
-
-    def rescale_xy(self, multiplier_x: float, multiplier_y: float):
-        self.scale_x *= multiplier_x
-        self.scale_y *= multiplier_y
-        return ScaledImage(self.image.resize(((self.image.width * multiplier_x), (self.image.height * multiplier_y)),
-                                             Image.BILINEAR), self.scale_x, self.scale_y)
-
-    def invalidate_scale(self):
-        """Used to say that the scale is unreliable. Used when adding a border as tracking the current border size seems
-        unnecessary"""
-        self.scale_x = -1
-        self.scale_y = -1
-
-
-def add_border(img: ScaledImage, pixels=0, multiplier=1.0):
-    new_size = (math.floor(img.image.width * multiplier + pixels), math.floor(img.image.height * multiplier + pixels))
-    new_img = ScaledImage(Image.new(img.image.mode, new_size))
-    new_img.invalidate_scale()
-    new_img.image.paste(img.image, (math.floor((new_img.image.width - img.image.width) / 2)
-                                    , math.ceil((new_img.image.height - img.image.height) / 2)))
+def add_border(img: np.ndarray, pixels=0, multiplier=1.0):
+    border_size = (np.array([img.shape[1], img.shape[0]]) * max(0., multiplier - 1) + pixels).astype(np.uint32)
+    new_img = cv2.copyMakeBorder(img, border_size[1], border_size[1], border_size[0], border_size[0],
+                                 cv2.BORDER_CONSTANT, value=[255, 255, 255])
     return new_img
 
 
-def crop_failed_image(img: ScaledImage, failed_data: TessData):
-    result = img.image.crop((
-        failed_data.left,
+def crop_failed_image(img: np.ndarray, failed_data: TessData):
+    result = NdImage.crop(img, (
         failed_data.top,
-        failed_data.left + failed_data.width,
-        failed_data.top + failed_data.height
+        failed_data.left,
+        failed_data.bottom,
+        failed_data.right
     ))
-    return ScaledImage(result, img.scale_x, img.scale_y)
+    return result
 
 
-def try_read_words(img: ScaledImage, failed_data):
-    results = []
-
-    cropped_image = crop_failed_image(img, failed_data)
-    attempt_words_image = add_border(cropped_image.rescale(4), multiplier=1.2)
-
-    data = pytesseract.image_to_data(attempt_words_image.image)
+def get_tess_data(img):
+    data = pytesseract.image_to_data(img, config="-c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN" +
+                                                 "OPQRSTUVWXYZ&")
     tess_data = TessDataParser(data)
-    for x in tess_data.data:
-        results.append(x.result)
-
-    return results, tess_data.failed_data
+    return tess_data
 
 
-def try_read_name(img: ScaledImage):
+def bb(bounding_rect):
+    return bounding_rect[0], bounding_rect[1], bounding_rect[0]+bounding_rect[2], bounding_rect[1]+bounding_rect[3]
+
+
+def try_read_words(img: np.ndarray, failed_data):
+    results = []
+    failed_words = []
+
+    eImg, contours, hierarchy = cv2.findContours(img, 1, 3)
+    bounds = sorted([bb(cv2.boundingRect(cnt)) for cnt in contours[:-1]], key=lambda x: x[0])
+
+    word_bounds = [bounds[0]]
+    for i in range(len(bounds))[1:]:
+        x_spacing = bounds[i][0] - word_bounds[-1][2]
+        if x_spacing > 0:
+            if x_spacing > 20:
+                word_bounds.append(bounds[i])
+            else:
+                word_bounds[-1] = (
+                    min(word_bounds[-1][0], bounds[i][0]),
+                    min(word_bounds[-1][1], bounds[i][1]),
+                    max(word_bounds[-1][2], bounds[i][2]),
+                    max(word_bounds[-1][3], bounds[i][3])
+                )
+
+    for bounds in word_bounds:
+        cropped_image = add_border(NdImage.crop(img, (bounds[1], bounds[0], bounds[3], bounds[2])), multiplier=1.1)
+        data = get_tess_data(cropped_image)
+        for d in data.data:
+            results.append(d.result)
+        if len(data.data) == 0:
+            failed_words.append(bounds)
+
+    return results, failed_words
+
+
+def try_read_name(img: np.ndarray):
     results = []
     scale = 1
-    top_name_img = ScaledImage(img.image.crop(
-        (0,
-         0,
-         img.image.width,
-         math.floor(img.image.height / 2.0)
-         )
-    ), img.scale_x, img.scale_y)
+    top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
+    # top_name_img = (img.image.crop(
+    #     (0,
+    #      0,
+    #      img.image.width,
+    #      math.floor(img.image.height / 2.0)
+    #      )
+    # ), img.scale_x, img.scale_y)
 
-    bot_name_img = ScaledImage(img.image.crop(
-        (0,
-         img.image.height - top_name_img.image.height,
-         img.image.width,
-         img.image.height
-         )
-    ), img.scale_x, img.scale_y)
+    bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
+    # bot_name_img = (img.image.crop(
+    #     (0,
+    #      img.image.height - top_name_img.image.height,
+    #      img.image.width,
+    #      img.image.height
+    #      )
+    # ), img.scale_x, img.scale_y)
 
     imgs = [top_name_img, bot_name_img]
     for i in imgs:
-        i2 = i.rescale(scale)
-        attempt_name_image = add_border(i2, multiplier=1.1)
-        attempt_name = pytesseract.image_to_data(attempt_name_image.image)
-        attempt_name = TessDataParser(attempt_name)
+        attempt_name_image = add_border(i, multiplier=1.1)
+        attempt_name = get_tess_data(attempt_name_image)
         for x in attempt_name.data:
             results.append(x.result)
 
@@ -163,27 +170,40 @@ def try_read_name(img: ScaledImage):
                 # attempt_letters = try_read_letters(attempt_words.failed_data)
                 pass
 
-    print(f'{" ".join(results)}')
+    print(f'{" ".join([y.value for y in results])}')
     pass
 
 
 @dataclass
 class ColorFilter:
-    max_rgb: (int, int, int)
-    min_rbg: (int, int, int)
+    f: Callable
+
+    def filter(self, p):
+        return self.f(p)
 
 
-def apply_interface_filter(item, color_filter: ColorFilter):
+YELLOW_THEME_FILTER = ColorFilter(lambda p: p is not None)
+RED_THEME_FILTER = ColorFilter(lambda p: p is not None)
+
+
+def apply_interface_filter(item: np.ndarray, color_filter: ColorFilter):
     """Used to remove any pixel outside the supplied filter
        Currently not used.
     """
 
-    bands = item.split()
-    for b in range(2):
-        bands[b + 1].paste(bands[b + 1].point(lambda p: 0))
-    item = Image.merge(item.mode, bands).convert("L")
-    item = item.point(lambda p: 0 if p < 30 else 255 - p)
-    return item
+    hueMinTest = item[:, :, 0] >= (200 / 360 * 179)
+    hueMaxTest = item[:, :, 0] < (210 / 360 * 179)
+    hueTest = hueMinTest & hueMaxTest
+    satMinTest = item[:, :, 1] >= (93 / 100 * 255)
+    satMaxTest = item[:, :, 1] < (100 / 100 * 255)
+    satTest = satMinTest & satMaxTest
+    hsvTest = ((hueTest & satTest) ^ 1) * 255
+    identityArraySize = list(item.shape)
+    identityArraySize[2] -= 1
+    identityArray = np.zeros(identityArraySize)
+    thresholdedImage = np.dstack((identityArray, hsvTest)).astype(np.uint8)
+
+    return thresholdedImage
 
 
 def get_item_image_list(inv: InventoryImageInfo):
@@ -191,31 +211,64 @@ def get_item_image_list(inv: InventoryImageInfo):
     items = []
     for y in range(inv.row_count):
         for x in range(inv.column_count):
-            if x + y * inv.column_count > 0 - 1:  # Skipping the first 0 items
+            if x + y * inv.column_count > 19 - 1:  # Skipping the first 0 items
                 x_coord = inv.top_left_corner_x + x * inv.item_gap_x
                 y_coord = inv.top_left_corner_y + y * inv.item_gap_y
-                bounds = (x_coord, y_coord, x_coord + inv.name_field_width, y_coord + inv.name_field_height)
-                item = ScaledImage(inv.image.crop(bounds))
-                item = item.rescale(4)
-                # item = apply_interface_filter(item)
+                bounds = (y_coord, x_coord, y_coord + inv.name_field_height, x_coord + inv.name_field_width)
+                item = NdImage.crop(inv.image, bounds)
+                item = cv2.cvtColor(item, cv2.COLOR_BGR2HSV)
+                item = NdImage.rescale(item, 400 / 72.0)
+                item = apply_interface_filter(item, YELLOW_THEME_FILTER)
+                item = cv2.cvtColor(item, cv2.COLOR_HSV2RGB)
+                item = cv2.cvtColor(item, cv2.COLOR_RGB2GRAY)
                 # item.show()
                 items.append(item)
     return items
 
 
-def detect_inventory_info(page: ImageFile.Image):
+def detect_inventory_info(page: np.ndarray):
     """Barely implemented. Purpose is to detect screen size and calculate all the fields needed for
        InventoryImageInfo"""
 
     # uses parameter expansion to improve readability
-    info = InventoryImageInfo(page, *(98, 331), *(166, 35), *(200, 199), *(6, 4))
+    # Param order: Top left corner, text area, item gaps, item grid
+    info = InventoryImageInfo(page, *(99, 319), *(165, 47), *(200, 199), *(6, 4))
     return info
 
 
-def parse_item_page(item_page: ImageFile.ImageFile):
+def parse_item_page(item_page: np.ndarray):
     item_page_info = detect_inventory_info(item_page)
     items = get_item_image_list(item_page_info)
 
     for item in items:
         try_read_name(item)
     pass
+
+
+class NdImage:
+    @staticmethod
+    def crop(image: np.ndarray, bounds) -> np.ndarray:
+        return image[bounds[0]:bounds[2], bounds[1]:bounds[3]]
+
+    @staticmethod
+    def rescale(item: np.ndarray, scale: float) -> np.ndarray:
+        return NdImage.rescale_xy(item, scale, scale)
+
+    @staticmethod
+    def rescale_xy(item: np.ndarray, scale_x: float, scale_y: float) -> np.ndarray:
+        return cv2.resize(item, dsize=(0, 0), fx=scale_x, fy=scale_y)
+
+
+def showImg(img):
+    # img2 = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+    cv2.imshow('image', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+def saveTest(img: np.ndarray, conv: int = -1):
+    if conv is not -1:
+        img2 = cv2.cvtColor(img, conv)
+    else:
+        img2 = img
+    cv2.imwrite('test.png', img2)
