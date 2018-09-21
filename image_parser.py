@@ -78,8 +78,8 @@ class InventoryImageInfo:
 def add_border(img: np.ndarray, pixels=0, multiplier=1.0):
     border_size = (np.array([img.shape[1], img.shape[0]]) * max(0., multiplier - 1) + pixels).astype(np.uint32)
     new_img = cv2.copyMakeBorder(img, border_size[1], border_size[1], border_size[0], border_size[0],
-                                 cv2.BORDER_CONSTANT, value=[255, 255, 255])
-    return new_img
+                                 cv2.BORDER_CONSTANT, value=(255, 255, 255))
+    return new_img, (border_size[0], border_size[1])
 
 
 def crop_failed_image(img: np.ndarray, failed_data: TessData):
@@ -101,6 +101,9 @@ def get_tess_data(img):
 
 def bb(bounding_rect):
     return bounding_rect[0], bounding_rect[1], bounding_rect[0]+bounding_rect[2], bounding_rect[1]+bounding_rect[3]
+
+
+word_locations = None
 
 
 def try_read_words(img: np.ndarray, failed_data):
@@ -137,30 +140,16 @@ def try_read_words(img: np.ndarray, failed_data):
 
 def try_read_name(img: np.ndarray):
     results = []
-    scale = 1
+    word_locations = {"img_size": img.shape[0:1]}
     top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
-    # top_name_img = (img.image.crop(
-    #     (0,
-    #      0,
-    #      img.image.width,
-    #      math.floor(img.image.height / 2.0)
-    #      )
-    # ), img.scale_x, img.scale_y)
-
     bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
-    # bot_name_img = (img.image.crop(
-    #     (0,
-    #      img.image.height - top_name_img.image.height,
-    #      img.image.width,
-    #      img.image.height
-    #      )
-    # ), img.scale_x, img.scale_y)
 
     imgs = [top_name_img, bot_name_img]
-    for i in imgs:
-        attempt_name_image = add_border(i, multiplier=1.1)
+    for i in range(len(imgs)):
+        attempt_name_image, border = add_border(imgs[i], multiplier=1.1)
         attempt_name = get_tess_data(attempt_name_image)
         for x in attempt_name.data:
+            word_locations[x.result] = (x.left - border[0], x.top + (top_name_img.shape[0] if i > 0 else 0) - border[1])
             results.append(x.result)
 
         for failed_name in attempt_name.failed_data:
