@@ -127,13 +127,13 @@ def try_read_words(img: np.ndarray, failed_data):
                     max(word_bounds[-1][3], bounds[i][3])
                 )
 
-    for bounds in word_bounds:
-        cropped_image, border_size = add_border(NdImage.crop(img, (bounds[1], bounds[0], bounds[3], bounds[2])), multiplier=1.1)
+    for b in word_bounds:
+        cropped_image, border_size = add_border(NdImage.crop(img, (b[1], b[0], b[3], b[2])), multiplier=1.1)
         data = get_tess_data(cropped_image)
         for d in data.data:
             results.append(d.result)
         if len(data.data) == 0:
-            failed_words.append(bounds)
+            failed_words.append(b)
 
     return results, failed_words
 
@@ -153,7 +153,7 @@ def try_read_name(img: np.ndarray):
             results.append(x.result)
 
         for failed_name in attempt_name.failed_data:
-            attempt_words = try_read_words(attempt_name_image, failed_name)
+            attempt_words, failed_bounds = try_read_words(attempt_name_image, failed_name)
             for failed_letter in attempt_words:
                 # not implemented yet
                 # attempt_letters = try_read_letters(attempt_words.failed_data)
