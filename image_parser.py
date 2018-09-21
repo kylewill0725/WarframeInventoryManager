@@ -128,7 +128,7 @@ def try_read_words(img: np.ndarray, failed_data):
                 )
 
     for bounds in word_bounds:
-        cropped_image = add_border(NdImage.crop(img, (bounds[1], bounds[0], bounds[3], bounds[2])), multiplier=1.1)
+        cropped_image, border_size = add_border(NdImage.crop(img, (bounds[1], bounds[0], bounds[3], bounds[2])), multiplier=1.1)
         data = get_tess_data(cropped_image)
         for d in data.data:
             results.append(d.result)
