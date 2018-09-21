@@ -159,7 +159,8 @@ def try_read_name(img: np.ndarray):
                 # attempt_letters = try_read_letters(attempt_words.failed_data)
                 pass
 
-    print(f'{" ".join([y[0] for y in sorted(word_locations.items(), key=lambda x: x[1][0])}')
+    sorted_words = [y[0] for y in sorted(word_locations.items(), key=lambda x: x[1][0])]
+    print(f'{" ".join(sorted_words)}')
     pass
 
 
