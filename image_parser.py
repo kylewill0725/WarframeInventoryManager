@@ -158,7 +158,7 @@ def try_read_name(img: np.ndarray):
                 # not implemented yet
                 # attempt_letters = try_read_letters(attempt_words.failed_data)
                 pass
-
+    del word_locations["img_size"]
     sorted_words = [y[0] for y in sorted(word_locations.items(), key=lambda x: x[1][0])]
     print(f'{" ".join(sorted_words)}')
     pass
