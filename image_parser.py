@@ -50,7 +50,7 @@ class TessDataParser:
                 tess = TessData(columns[-1], *[int(x) for x in columns[:-1]])
                 if tess.confidence >= 0:
                     if tess.confidence >= 75:
-                        match = re.match("[a-zA-Z0-9 &]+", tess.result.value)
+                        match = re.match("[a-zA-Z0-9 &]+", tess.result)
                         if match is not None:
                             data.append(tess)
                         else:
