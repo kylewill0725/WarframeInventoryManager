@@ -273,7 +273,7 @@ def get_item_image_list(inv: InventoryImageInfo):
     items = []
     for y in range(inv.row_count):
         for x in range(inv.column_count):
-            if x + y * inv.column_count > 5 - 1:  # Skipping the first 0 items
+            if x + y * inv.column_count > 6- 1:  # Skipping the first 0 items
                 x_coord = inv.top_left_corner_x + x * inv.item_gap_x
                 y_coord = inv.top_left_corner_y + y * inv.item_gap_y
                 bounds = (y_coord, x_coord, y_coord + inv.name_field_height, x_coord + inv.name_field_width)
