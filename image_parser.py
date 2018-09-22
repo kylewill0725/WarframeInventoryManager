@@ -103,9 +103,6 @@ def bb(bounding_rect):
     return bounding_rect[0], bounding_rect[1], bounding_rect[0]+bounding_rect[2], bounding_rect[1]+bounding_rect[3]
 
 
-word_locations = None
-
-
 def try_read_words(img: np.ndarray, failed_data):
     results = []
     failed_words = []
@@ -140,7 +137,7 @@ def try_read_words(img: np.ndarray, failed_data):
 
 def try_read_name(img: np.ndarray):
     results = []
-    word_locations = {"img_size": img.shape[0:1]}
+    word_locations = {}
     top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
     bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
 
@@ -158,7 +155,7 @@ def try_read_name(img: np.ndarray):
                 # not implemented yet
                 # attempt_letters = try_read_letters(attempt_words.failed_data)
                 pass
-    del word_locations["img_size"]
+
     sorted_words = [y[0] for y in sorted(word_locations.items(), key=lambda x: x[1][0])]
     print(f'{" ".join(sorted_words)}')
     pass
