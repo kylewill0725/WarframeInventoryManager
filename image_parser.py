@@ -215,7 +215,7 @@ def undo_word_wrap(img: np.ndarray):
             , i.shape[0], max(i.shape[1], max_x + BBoxes.WORD))
         )
 
-    return np.concatenate(tuple(imgs), axis=1)
+    return add_border(np.concatenate(tuple(imgs), axis=1), multiplier=1.1)[0]
 
 
 def try_read_name(img: np.ndarray):
