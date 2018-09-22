@@ -112,6 +112,9 @@ class BBoxes(IntEnum):
     LETTER = 1
 
 
+spacing_history = { "word": [], "letter": [] }
+
+
 def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
     if len(contours) < 2:
         return [(0, 0, 0, 0)]
@@ -129,8 +132,10 @@ def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
         box = boxes[i+1]
         x_spacing = box[0] - result[-1][2]
         if x_spacing >= selection:
+            spacing_history["word"].append(x_spacing)
             result.append(box)
         else:
+            spacing_history["letter"].append(x_spacing)
             result[-1] = (
                 min(result[-1][0], box[0]),
                 min(result[-1][1], box[1]),
@@ -254,7 +259,7 @@ def get_item_image_list(inv: InventoryImageInfo):
     items = []
     for y in range(inv.row_count):
         for x in range(inv.column_count):
-            if x + y * inv.column_count > 19 - 1:  # Skipping the first 0 items
+            if x + y * inv.column_count > 0 - 1:  # Skipping the first 0 items
                 x_coord = inv.top_left_corner_x + x * inv.item_gap_x
                 y_coord = inv.top_left_corner_y + y * inv.item_gap_y
                 bounds = (y_coord, x_coord, y_coord + inv.name_field_height, x_coord + inv.name_field_width)
