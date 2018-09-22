@@ -1,7 +1,7 @@
 import math
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Callable, Tuple
 
 import cv2
@@ -100,7 +100,7 @@ def get_tess_data(img):
     return tess_data
 
 
-class BBoxes(Enum):
+class BBoxes(IntEnum):
     LINE = 50
     WORD = 20
     LETTER = 0
@@ -122,7 +122,7 @@ def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
     for i in range(len(boxes[1:])):
         box = boxes[i+1]
         x_spacing = box[0] - result[-1][2]
-        if x_spacing >= selection.value:
+        if x_spacing >= selection:
             result.append(box)
         else:
             result[-1] = (
@@ -162,7 +162,7 @@ def undo_word_wrap(img: np.ndarray):
         boxes = contour_bound_boxes(cv2.findContours(i, 1, 3)[1], BBoxes.WORD)
         min_x = min(boxes, key=lambda x: x[0])[0]
         max_x = max(boxes, key=lambda x: x[2])[2]
-        imgs[j] = NdImage.crop(i, (0, min_x - BBoxes.WORD.value, i.shape[0], max_x + BBoxes.WORD.value))
+        imgs[j] = NdImage.crop(i, (0, min_x - (BBoxes.WORD if j == 0 else 0), i.shape[0], max_x + BBoxes.WORD))
 
     return np.concatenate(tuple(imgs), axis=1)
 
