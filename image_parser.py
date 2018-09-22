@@ -139,7 +139,8 @@ def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
         box = boxes[i+1]
         x_spacing = box[0] - result[-1][2]
         if x_spacing >= selection:
-            spacing_history["word"].append(x_spacing)
+            if selection == BBoxes.WORD:
+                spacing_history["word"].append(x_spacing)
             result.append(box)
         else:
             spacing_history["letter"].append(x_spacing)
