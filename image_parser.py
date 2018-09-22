@@ -138,27 +138,24 @@ def try_read_words(img: np.ndarray, failed_data):
 def undo_word_wrap(img: np.ndarray):
     top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
     bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
-    pass
+    return np.concatenate((top_name_img, bot_name_img), axis=1)
 
 def try_read_name(img: np.ndarray):
     results = []
     word_locations = {}
     single_line_img = undo_word_wrap(img)
 
+    attempt_name_image, border = add_border(imgs[i], multiplier=1.1)
+    attempt_name = get_tess_data(attempt_name_image)
+    for x in attempt_name.data:
+        word_locations[x.result] = (x.left - border[0], x.top + (top_name_img.shape[0] if i > 0 else 0) - border[1])
+        results.append(x.result)
 
-    for i in range(len(imgs)):
-        attempt_name_image, border = add_border(imgs[i], multiplier=1.1)
-        attempt_name = get_tess_data(attempt_name_image)
-        for x in attempt_name.data:
-            word_locations[x.result] = (x.left - border[0], x.top + (top_name_img.shape[0] if i > 0 else 0) - border[1])
-            results.append(x.result)
-
-        for failed_name in attempt_name.failed_data:
-            attempt_words, failed_bounds = try_read_words(attempt_name_image, failed_name)
-            for failed_letter in attempt_words:
-                # not implemented yet
-                # attempt_letters = try_read_letters(attempt_words.failed_data)
-                pass
+    for failed_name in attempt_name.failed_data:
+        attempt_words, failed_bounds = try_read_words(attempt_name_image, failed_name)
+        for failed_letter in attempt_words:
+            # not implemented yet
+            # attempt_letters = try_read_letters(attempt_words.failed_data)
 
     sorted_words = [y[0] for y in sorted(word_locations.items(), key=lambda x: x[1][0])]
     print(f'{" ".join(sorted_words)}')
