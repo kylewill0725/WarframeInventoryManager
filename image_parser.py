@@ -112,7 +112,7 @@ def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
 
     boxes = []
     for cnt in contours[:-1]:
-        bb = cv2.boundingRect(cnt)
+        bb = list(cv2.boundingRect(cnt))
         bb[2] += bb[0]
         bb[3] += bb[1]
         boxes.append(bb)
