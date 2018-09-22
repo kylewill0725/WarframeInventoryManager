@@ -122,7 +122,7 @@ def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
     for i in range(len(boxes[1:])):
         box = boxes[i]
         x_spacing = box[0] - result[-1][2]
-        if x_spacing >= selection:
+        if x_spacing >= selection.value:
             result.append(box)
         else:
             result[-1] = (
