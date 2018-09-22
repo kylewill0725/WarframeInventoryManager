@@ -115,6 +115,13 @@ class BBoxes(IntEnum):
 spacing_history = { "word": [], "letter": [] }
 
 
+def draw_contour_bb(img: np.ndarray, boxes):
+    result = img.copy()
+    for b in boxes:
+        cv2.rectangle(result, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 1)
+    return result
+
+
 def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
     if len(contours) < 2:
         return [(0, 0, 0, 0)]
