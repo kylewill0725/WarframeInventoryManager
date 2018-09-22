@@ -158,7 +158,13 @@ def undo_word_wrap(img: np.ndarray):
     boxes = contour_bound_boxes(cv2.findContours(top_name_img, 1, 3)[1], BBoxes.WORD)
     min_x = min(boxes, key=lambda x: x[0])
     max_x = max(boxes, key=lambda x: x[2])
-    top_name_img = NdImage.crop(top_name_img, (0, min_x - BBoxes.WORD, top_name_img.shape[0], max_x + BBoxes.WORD))
+    top_name_img = NdImage.crop(top_name_img,
+                                (
+                                    0,
+                                     min_x - BBoxes.WORD.value,
+                                     top_name_img.shape[0],
+                                     max_x + BBoxes.WORD.value
+                                ))
     bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
     return np.concatenate((top_name_img, bot_name_img), axis=1)
 
