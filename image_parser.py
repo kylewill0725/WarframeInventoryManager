@@ -135,13 +135,17 @@ def try_read_words(img: np.ndarray, failed_data):
     return results, failed_words
 
 
+def undo_word_wrap(img: np.ndarray):
+    top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
+    bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
+    pass
+
 def try_read_name(img: np.ndarray):
     results = []
     word_locations = {}
-    top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
-    bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
+    single_line_img = undo_word_wrap(img)
 
-    imgs = [top_name_img, bot_name_img]
+
     for i in range(len(imgs)):
         attempt_name_image, border = add_border(imgs[i], multiplier=1.1)
         attempt_name = get_tess_data(attempt_name_image)
