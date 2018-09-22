@@ -1,6 +1,7 @@
 import math
 import re
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Callable, Tuple
 
 import cv2
@@ -99,8 +100,17 @@ def get_tess_data(img):
     return tess_data
 
 
-def bb(bounding_rect):
-    return bounding_rect[0], bounding_rect[1], bounding_rect[0]+bounding_rect[2], bounding_rect[1]+bounding_rect[3]
+class BBoxes(Enum):
+    LINE = 0
+    WORD = 1
+    LETTER = 2
+
+
+def contour_bound_boxes(contours, selections: BBoxes = BBoxes.LINE):
+    result = []
+    for cnt in contours[:-1]:
+        bb = cv2.boundingRect(cnt)
+    return contours[0], contours[1], contours[0] + contours[2], contours[1] + contours[3]
 
 
 def try_read_words(img: np.ndarray, failed_data):
@@ -108,7 +118,8 @@ def try_read_words(img: np.ndarray, failed_data):
     failed_words = []
 
     eImg, contours, hierarchy = cv2.findContours(img, 1, 3)
-    bounds = sorted([bb(cv2.boundingRect(cnt)) for cnt in contours[:-1]], key=lambda x: x[0])
+    bounds = sorted([contour_bound_boxes(cv2.boundingRect(cnt)) for cnt in contours[:-1]], key=lambda x: x[0])
+    bounds = contour_bound_boxes(contours)
 
     word_bounds = [bounds[0]]
     for i in range(len(bounds))[1:]:
