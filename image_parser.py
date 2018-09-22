@@ -173,7 +173,7 @@ def try_read_letters(img: np.ndarray, failed_bounds):
         for d in data.data:
             result += d.result
 
-    return result, (failed_bounds[0], failed_bounds[1])
+    return result
 
 
 def try_read_words(img: np.ndarray):
