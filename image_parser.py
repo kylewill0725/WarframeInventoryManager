@@ -155,17 +155,14 @@ def try_read_words(img: np.ndarray, failed_data):
 
 def undo_word_wrap(img: np.ndarray):
     top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
-    boxes = contour_bound_boxes(cv2.findContours(top_name_img, 1, 3)[1], BBoxes.WORD)
-    min_x = min(boxes, key=lambda x: x[0])[0]
-    max_x = max(boxes, key=lambda x: x[2])[2]
-    top_name_img = NdImage.crop(top_name_img,
-                                (
-                                    0,
-                                     min_x - BBoxes.WORD.value,
-                                     top_name_img.shape[0],
-                                     max_x + BBoxes.WORD.value
-                                ))
     bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
+    imgs = [top_name_img, bot_name_img]
+    for i in imgs:
+        boxes = contour_bound_boxes(cv2.findContours(i, 1, 3)[1], BBoxes.WORD)
+        min_x = min(boxes, key=lambda x: x[0])[0]
+        max_x = max(boxes, key=lambda x: x[2])[2]
+        i = NdImage.crop(i, (0, min_x - BBoxes.WORD.value, i.shape[0], max_x + BBoxes.WORD.value))
+
     return np.concatenate((top_name_img, bot_name_img), axis=1)
 
 def try_read_name(img: np.ndarray):
