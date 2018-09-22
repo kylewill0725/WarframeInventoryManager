@@ -93,9 +93,15 @@ def crop_failed_image(img: np.ndarray, failed_data: TessData):
     return result
 
 
-def get_tess_data(img):
-    data = pytesseract.image_to_data(img, config="-c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN" +
-                                                 "OPQRSTUVWXYZ&")
+class PSM(IntEnum):
+    LINE = 7
+    WORD = 8
+    LETTER = 10
+
+
+def get_tess_data(img, psm: PSM = PSM.LINE):
+    data = pytesseract.image_to_data(img, config=f'--psm {psm} -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyz' +
+                                                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ&")
     tess_data = TessDataParser(data)
     return tess_data
 
@@ -103,7 +109,7 @@ def get_tess_data(img):
 class BBoxes(IntEnum):
     LINE = 50
     WORD = 20
-    LETTER = 0
+    LETTER = 1
 
 
 def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
@@ -135,7 +141,28 @@ def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
     return result
 
 
-def try_read_words(img: np.ndarray, failed_data):
+def try_read_letters(img: np.ndarray, failed_bounds):
+    result = ""
+    cropped_word, border_size = add_border(
+                        NdImage.crop(
+                            img,
+                            (failed_bounds[1], failed_bounds[0], failed_bounds[3], failed_bounds[2])
+                        ),
+                        multiplier=1.1
+                    )
+    eImg, contours, hierarchy = cv2.findContours(cropped_word, 1, 3)
+    letter_bounds = contour_bound_boxes(contours, BBoxes.LETTER)
+
+    for b in letter_bounds:
+        cropped_image, border_size = add_border(NdImage.crop(img, (b[1], b[0], b[3], b[2])), multiplier=1.1)
+        data = get_tess_data(cropped_image, PSM.LETTER)
+        for d in data.data:
+            result += d.result
+
+    return result, (failed_bounds[0], failed_bounds[1])
+
+
+def try_read_words(img: np.ndarray):
     results = []
     failed_words = []
 
@@ -144,13 +171,18 @@ def try_read_words(img: np.ndarray, failed_data):
 
     for b in word_bounds:
         cropped_image, border_size = add_border(NdImage.crop(img, (b[1], b[0], b[3], b[2])), multiplier=1.1)
-        data = get_tess_data(cropped_image)
+        data = get_tess_data(cropped_image, PSM.WORD)
         for d in data.data:
-            results.append(d.result)
+            results.append((d.result, (b[0], b[1])))
         if len(data.data) == 0:
             failed_words.append(b)
 
-    return results, failed_words
+    for failed_word_bounds in failed_words:
+        word = try_read_letters(img, failed_word_bounds)
+        if len(word) > 0:
+            results.append((word, (failed_word_bounds[0], failed_word_bounds[1])))
+
+    return results
 
 
 def undo_word_wrap(img: np.ndarray):
@@ -168,21 +200,17 @@ def undo_word_wrap(img: np.ndarray):
 
 
 def try_read_name(img: np.ndarray):
-    results = []
     word_locations = {}
     single_line_img = undo_word_wrap(img)
 
     attempt_name = get_tess_data(single_line_img)
     for x in attempt_name.data:
         word_locations[x.result] = (x.left, x.top)
-        results.append(x.result)
 
     for failed_name in attempt_name.failed_data:
-        attempt_words, failed_bounds = try_read_words(single_line_img, failed_name)
-        for failed_letter in attempt_words:
-            # not implemented yet
-            # attempt_letters = try_read_letters(attempt_words.failed_data)
-            pass
+        words = try_read_words(single_line_img)
+        for word in words:
+            word_locations[word[0]] = word[1]
 
     sorted_words = [y[0] for y in sorted(word_locations.items(), key=lambda x: x[1][0])]
     print(f'{" ".join(sorted_words)}')
