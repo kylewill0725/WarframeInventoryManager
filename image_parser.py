@@ -118,7 +118,7 @@ def try_read_words(img: np.ndarray, failed_data):
     failed_words = []
 
     eImg, contours, hierarchy = cv2.findContours(img, 1, 3)
-    bounds = sorted([contour_bound_boxes(cv2.boundingRect(cnt)) for cnt in contours[:-1]], key=lambda x: x[0])
+    # bounds = sorted([contour_bound_boxes(cv2.boundingRect(cnt)) for cnt in contours[:-1]], key=lambda x: x[0])
     bounds = contour_bound_boxes(contours)
 
     word_bounds = [bounds[0]]
