@@ -164,7 +164,8 @@ def undo_word_wrap(img: np.ndarray):
         max_x = max(boxes, key=lambda x: x[2])[2]
         imgs[j] = NdImage.crop(i, (0, min_x - BBoxes.WORD.value, i.shape[0], max_x + BBoxes.WORD.value))
 
-    return np.concatenate((top_name_img, bot_name_img), axis=1)
+    return np.concatenate(tuple(imgs), axis=1)
+
 
 def try_read_name(img: np.ndarray):
     results = []
