@@ -161,7 +161,7 @@ def try_read_letters(img: np.ndarray, failed_bounds):
 
 
     for b in letter_bounds:
-        cropped_image, border_size = add_border(NdImage.crop(img, (b[1], b[0], b[3], b[2])), multiplier=1.1)
+        cropped_image, border_size = add_border(NdImage.crop(img, (b[1], b[0], b[3], b[2])), multiplier=1.1, pixels=5)
         data = get_tess_data(cropped_image, PSM.LETTER)
         for d in data.data:
             result += d.result
