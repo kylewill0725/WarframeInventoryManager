@@ -145,10 +145,9 @@ def try_read_name(img: np.ndarray):
     word_locations = {}
     single_line_img = undo_word_wrap(img)
 
-    attempt_name_image, border = add_border(imgs[i], multiplier=1.1)
-    attempt_name = get_tess_data(attempt_name_image)
+    attempt_name = get_tess_data(single_line_img)
     for x in attempt_name.data:
-        word_locations[x.result] = (x.left - border[0], x.top + (top_name_img.shape[0] if i > 0 else 0) - border[1])
+        word_locations[x.result] = (x.left, x.top)
         results.append(x.result)
 
     for failed_name in attempt_name.failed_data:
@@ -156,6 +155,7 @@ def try_read_name(img: np.ndarray):
         for failed_letter in attempt_words:
             # not implemented yet
             # attempt_letters = try_read_letters(attempt_words.failed_data)
+            pass
 
     sorted_words = [y[0] for y in sorted(word_locations.items(), key=lambda x: x[1][0])]
     print(f'{" ".join(sorted_words)}')
