@@ -107,6 +107,9 @@ class BBoxes(Enum):
 
 
 def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
+    if len(contours) < 2:
+        return [(0, 0, 0, 0)]
+
     boxes = []
     for cnt in contours[:-1]:
         bb = cv2.boundingRect(cnt)
