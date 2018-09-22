@@ -162,7 +162,7 @@ def try_read_name(img: np.ndarray):
         results.append(x.result)
 
     for failed_name in attempt_name.failed_data:
-        attempt_words, failed_bounds = try_read_words(attempt_name_image, failed_name)
+        attempt_words, failed_bounds = try_read_words(single_line_img, failed_name)
         for failed_letter in attempt_words:
             # not implemented yet
             # attempt_letters = try_read_letters(attempt_words.failed_data)
