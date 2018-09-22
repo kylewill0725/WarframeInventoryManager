@@ -108,7 +108,7 @@ def get_tess_data(img, psm: PSM = PSM.LINE):
 
 class BBoxes(IntEnum):
     LINE = 50
-    WORD = 20
+    WORD = 30
     LETTER = 1
 
 
