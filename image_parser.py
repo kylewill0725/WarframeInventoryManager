@@ -101,16 +101,34 @@ def get_tess_data(img):
 
 
 class BBoxes(Enum):
-    LINE = 0
-    WORD = 1
-    LETTER = 2
+    LINE = 50
+    WORD = 20
+    LETTER = 0
 
 
-def contour_bound_boxes(contours, selections: BBoxes = BBoxes.LINE):
-    result = []
+def contour_bound_boxes(contours, selection: BBoxes = BBoxes.LINE):
+    boxes = []
     for cnt in contours[:-1]:
         bb = cv2.boundingRect(cnt)
-    return contours[0], contours[1], contours[0] + contours[2], contours[1] + contours[3]
+        bb[2] += bb[0]
+        bb[3] += bb[1]
+    boxes.sort(key=lambda x: x[0])
+
+    result = [boxes[0]]
+    for i in range(len(boxes[1:])):
+        box = boxes[i]
+        x_spacing = box[0] - result[-1][2]
+        if x_spacing >= selection:
+            result.append(box)
+        else:
+            result[-1] = (
+                min(result[-1][0], box[0]),
+                min(result[-1][1], box[1]),
+                max(result[-1][2], box[2]),
+                max(result[-1][3], box[3])
+            )
+
+    return result
 
 
 def try_read_words(img: np.ndarray, failed_data):
@@ -118,22 +136,7 @@ def try_read_words(img: np.ndarray, failed_data):
     failed_words = []
 
     eImg, contours, hierarchy = cv2.findContours(img, 1, 3)
-    # bounds = sorted([contour_bound_boxes(cv2.boundingRect(cnt)) for cnt in contours[:-1]], key=lambda x: x[0])
-    bounds = contour_bound_boxes(contours)
-
-    word_bounds = [bounds[0]]
-    for i in range(len(bounds))[1:]:
-        x_spacing = bounds[i][0] - word_bounds[-1][2]
-        if x_spacing > 0:
-            if x_spacing > 20:
-                word_bounds.append(bounds[i])
-            else:
-                word_bounds[-1] = (
-                    min(word_bounds[-1][0], bounds[i][0]),
-                    min(word_bounds[-1][1], bounds[i][1]),
-                    max(word_bounds[-1][2], bounds[i][2]),
-                    max(word_bounds[-1][3], bounds[i][3])
-                )
+    word_bounds = contour_bound_boxes(contours, BBoxes.WORD)
 
     for b in word_bounds:
         cropped_image, border_size = add_border(NdImage.crop(img, (b[1], b[0], b[3], b[2])), multiplier=1.1)
@@ -148,6 +151,10 @@ def try_read_words(img: np.ndarray, failed_data):
 
 def undo_word_wrap(img: np.ndarray):
     top_name_img = NdImage.crop(img, (0, 0, math.floor(img.shape[0] / 2.0), img.shape[1]))
+    boxes = contour_bound_boxes(cv2.findContours(top_name_img, 1, 3)[1], BBoxes.WORD)
+    min_x = min(boxes, key=lambda x: x[0])
+    max_x = max(boxes, key=lambda x: x[2])
+    top_name_img = NdImage.crop(top_name_img, (0, min_x - BBoxes.WORD, top_name_img.shape[0], max_x + BBoxes.WORD))
     bot_name_img = NdImage.crop(img, (img.shape[0] - top_name_img.shape[0], 0, img.shape[0], img.shape[1]))
     return np.concatenate((top_name_img, bot_name_img), axis=1)
 
