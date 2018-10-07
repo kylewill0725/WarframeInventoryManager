@@ -2,6 +2,8 @@ import numpy as np
 
 from pytesseract import pytesseract
 
+from test import img_cap_test
+
 try:
     import Image, ImageGrab
 except ImportError:
@@ -32,4 +34,5 @@ def showImg(img):
 
 
 if __name__ == '__main__':
-    image_parse_test()
+    # image_parse_test()
+    img_cap_test()

@@ -1,13 +1,12 @@
 import math
 import re
 from dataclasses import dataclass, field
-from enum import Enum, IntEnum
-from typing import Callable, Tuple
+from enum import IntEnum
+from typing import Callable
 
 import cv2
 import pytesseract
 import numpy as np
-from PIL import Image, ImageFile
 
 
 @dataclass
@@ -273,7 +272,7 @@ def get_item_image_list(inv: InventoryImageInfo):
     items = []
     for y in range(inv.row_count):
         for x in range(inv.column_count):
-            if x + y * inv.column_count > 6- 1:  # Skipping the first 0 items
+            if x + y * inv.column_count > 6 - 1:  # Skipping the first 0 items
                 x_coord = inv.top_left_corner_x + x * inv.item_gap_x
                 y_coord = inv.top_left_corner_y + y * inv.item_gap_y
                 bounds = (y_coord, x_coord, y_coord + inv.name_field_height, x_coord + inv.name_field_width)
