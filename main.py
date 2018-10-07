@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from pytesseract import pytesseract
@@ -35,4 +37,5 @@ def showImg(img):
 
 if __name__ == '__main__':
     # image_parse_test()
+    time.sleep(5)
     img_cap_test()
