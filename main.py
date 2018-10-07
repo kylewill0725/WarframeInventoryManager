@@ -36,6 +36,4 @@ def showImg(img):
 
 
 if __name__ == '__main__':
-    # image_parse_test()
-    time.sleep(5)
-    img_cap_test()
+    image_parse_test()
