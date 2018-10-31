@@ -14,6 +14,8 @@ numpy = "*"
 dataclasses = "*"
 pyautogui = "*"
 imutils = "*"
+requests = "*"
+"json5" = "*"
 
 [dev-packages]
 
