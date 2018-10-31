@@ -8,10 +8,10 @@ import requests
 
 
 class WeaponTypes(str, Enum):
-    SHOTGUN = "shotgun"
-    RIFLE = "rifle"
-    PISTOL = "pistol"
-    MELEE = "melee"
+    SHOTGUN = "Shotgun"
+    RIFLE = "Rifle"
+    PISTOL = "Pistol"
+    MELEE = "Melee"
 
 
 @dataclass
@@ -25,12 +25,39 @@ class Buff:
     unique_words: str
     base_value: np.float
 
+    def __init__(self, json):
+        pass
+
 
 @dataclass
 class Weapon:
     name: str
     sem_disposition: np.float
     type: WeaponTypes
+
+    def __init__(self, json):
+        pass
+
+@dataclass
+class WeaponTypeData:
+    Weapons: list
+    Buffs: list
+
+    def __init__(self, json):
+        self.Weapons = []
+        self.Buffs = []
+
+
+class SemlarData:
+    Melee: WeaponTypeData
+    Rifle: WeaponTypeData
+    Pistol: WeaponTypeData
+    Shotgun: WeaponTypeData
+
+    def __init__(self, json):
+        for wt in WeaponTypes:
+            self.__setattr__(wt, WeaponTypeData(json[wt]))
+
 
 def get_semlar_data():
     #get html
@@ -44,7 +71,7 @@ def get_semlar_data():
     raw_json_without_comments = re.sub(r"(?m)^\s*//.*\n?", "", raw_json)
 
     json_data = json.loads(raw_json_without_comments)
-    pass
+    data = SemlarData(json_data)
 
 
 if __name__ == "__main__":
