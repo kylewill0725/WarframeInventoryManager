@@ -21,3 +21,34 @@ def save_items(images):
     for img in images:
         img.save(f'test{i}.png')
         i += 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

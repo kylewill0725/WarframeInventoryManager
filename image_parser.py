@@ -1,7 +1,7 @@
 import math
 import re
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import IntEnum, Enum
 from typing import Callable
 
 import cv2
@@ -36,11 +36,11 @@ class TessData:
 
 
 class TessDataParser:
-    def __init__(self, tess_result):
-        (self.data, self.failed_data) = TessDataParser.parse(tess_result)
+    def __init__(self, tess_result, confidence=75):
+        (self.data, self.failed_data) = TessDataParser.parse(tess_result, confidence)
 
     @staticmethod
-    def parse(tess_result: str):
+    def parse(tess_result: str, confidence: int):
         data = []
         failed_data = []
         rows = tess_result.split("\n")
@@ -49,8 +49,8 @@ class TessDataParser:
             if columns[0].isdigit():
                 tess = TessData(columns[-1], *[int(x) for x in columns[:-1]])
                 if tess.confidence >= 0:
-                    if tess.confidence >= 75:
-                        match = re.match("[a-zA-Z0-9 &]+", tess.result)
+                    if tess.confidence >= confidence:
+                        match = re.match("[a-zA-Z0-9 &.+%-]+", tess.result)
                         if match is not None:
                             data.append(tess)
                         else:
@@ -98,10 +98,15 @@ class PSM(IntEnum):
     LETTER = 10
 
 
-def get_tess_data(img, psm: PSM = PSM.LINE):
-    data = pytesseract.image_to_data(img, config=f'--psm {psm} -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyz' +
-                                                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ&")
-    tess_data = TessDataParser(data)
+class CharacterSets(Enum):
+    ALL = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ&1234567890+-.%'
+    NUMBERS = '1234567890+-.%'
+    CHARACTERS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ&'
+
+
+def get_tess_data(img, psm: PSM = PSM.LINE, confidence=75, character_set=CharacterSets.ALL):
+    data = pytesseract.image_to_data(img, config=f'--psm {psm} -c tessedit_char_whitelist={character_set.value}')
+    tess_data = TessDataParser(data, confidence=confidence)
     return tess_data
 
 
@@ -309,6 +314,12 @@ def parse_item_page(item_page: np.ndarray):
 class NdImage:
     @staticmethod
     def crop(image: np.ndarray, bounds) -> np.ndarray:
+        """
+        Bounds is in the form (y1, x1, y2, x2)
+        :param image:
+        :param bounds:
+        :return:
+        """
         return image[bounds[0]:bounds[2], bounds[1]:bounds[3]]
 
     @staticmethod

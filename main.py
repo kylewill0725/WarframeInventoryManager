@@ -4,7 +4,6 @@ import numpy as np
 
 from pytesseract import pytesseract
 
-from test import img_cap_test
 
 try:
     import Image, ImageGrab
@@ -13,7 +12,7 @@ except ImportError:
 from image_parser import parse_item_page, TessDataParser, NdImage
 from matplotlib import pyplot as plt
 import cv2
-
+from processing.mods.mods_capture import test
 
 pytesseract.tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR-3\tesseract.exe'
 
@@ -36,4 +35,4 @@ def showImg(img):
 
 
 if __name__ == '__main__':
-    image_parse_test()
+    test()

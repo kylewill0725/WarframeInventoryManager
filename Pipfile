@@ -10,6 +10,10 @@ pytesseract = "*"
 opencv-python = "*"
 matplotlib = "*"
 image = "*"
+numpy = "*"
+dataclasses = "*"
+pyautogui = "*"
+imutils = "*"
 
 [dev-packages]
 
